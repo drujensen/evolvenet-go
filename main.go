@@ -6,6 +6,7 @@ import (
   "math/rand"
   "sort"
   "time"
+  "strings"
 )
 
 // utility functions
@@ -65,6 +66,9 @@ func (self *Neuron) clone(other *Neuron) {
 
 func (self *Neuron) randomize() {
   self.bias = randFloat(-1.0, 1.0)
+  for i := 0; i < len(self.synapses); i++ {
+    self.synapses[i].randomize()
+  }
 }
 
 func (self *Neuron) mutate(rate float64) {
@@ -96,15 +100,16 @@ func (self *Neuron) activate(parent *Layer) {
     index := self.synapses[i].index
     sum += parent.neurons[index].activation * self.synapses[i].weight
   }
+  sum += self.bias
   switch self.function {
   case "sigmoid":
-    self.activation = (1.0 / (1.0 + math.Exp(sum+self.bias)))
+    self.activation = 1.0 / (1.0 + math.Pow(math.E, -sum))
   case "relu":
-    self.activation = math.Max(0.0, sum+self.bias)
+    self.activation = math.Max(0.0, sum)
   case "tanh":
-    self.activation = math.Tanh(sum + self.bias)
+    self.activation = math.Tanh(sum)
   default:
-    self.activation = sum + self.bias
+    self.activation = sum
   }
 }
 
@@ -116,8 +121,8 @@ type Layer struct {
 }
 
 func (self *Layer) clone(other *Layer) {
-  self.layer_type = other.layer_type
-  self.function = other.function
+  self.layer_type = strings.Clone(other.layer_type)
+  self.function = strings.Clone(other.function)
 
   if len(self.neurons) != len(other.neurons) {
     self.neurons = make([]Neuron, len(other.neurons))
@@ -174,7 +179,7 @@ type Network struct {
 }
 
 func (self *Network) add_layer(layer_type string, function string, size int) {
-  layer := Layer{layer_type, function, make([]Neuron, size)}
+  layer := Layer{strings.Clone(layer_type), strings.Clone(function), make([]Neuron, size)}
   self.layers = append(self.layers, layer)
 }
 
@@ -182,6 +187,7 @@ func (self *Network) fully_connect() {
   for i := 0; i < len(self.layers); i++ {
     if self.layers[i].layer_type == "hidden" || self.layers[i].layer_type == "output" {
       for j := 0; j < len(self.layers[i].neurons); j++ {
+        self.layers[i].neurons[j].function = strings.Clone(self.layers[i].function)
         for k := 0; k < len(self.layers[i-1].neurons); k++ {
           self.layers[i].neurons[j].synapses = append(self.layers[i].neurons[j].synapses, Synapse{0.5, k})
         }
@@ -211,7 +217,7 @@ func (self *Network) randomize() {
 
 func (self *Network) mutate() {
   for i := 0; i < len(self.layers); i++ {
-    self.layers[i].mutate(self.loss)
+    self.layers[i].mutate(0.1)
   }
 }
 
@@ -239,10 +245,10 @@ func (self *Network) evaluate(data [][][]float64) {
     actual := self.run(data[i][0])
     expected := data[i][1]
     for j := 0; j < len(expected); j++ {
-      sum += (actual[j] - expected[j]) * (actual[j] - expected[j])
+      sum += math.Pow(expected[j] - actual[j], 2)
     }
-    self.loss = float64(math.Sqrt(sum / float64(len(data))))
   }
+  self.loss = float64(sum / (2.0 * float64(len(data))))
 }
 
 func (self *Network) get_loss() float64 {
@@ -279,7 +285,6 @@ func (self *Organism) evolve(data [][][]float64, generations int, threshold floa
 
     loss := self.networks[0].get_loss()
     if threshold > 0 && loss < threshold {
-      fmt.Printf("generation: %d loss: %f. below threshold. breaking\n", i, loss)
       break
     }
 
@@ -287,18 +292,13 @@ func (self *Organism) evolve(data [][][]float64, generations int, threshold floa
       fmt.Printf("generation: %d loss: %f\n", i, loss)
     }
 
-    // clone the top half to the bottom half of the networks
-    for j := 0; j < half; j++ {
-      self.networks[half+j].clone(&self.networks[j])
-    }
-
-    // randomize the bottom quarter of the networks
-    for j := half + quarter; j < len(self.networks); j++ {
-      self.networks[j].randomize()
+    // clone the top quarter to the bottom quarter of the networks
+    for j := 0; j < quarter; j++ {
+      self.networks[half+quarter+j].clone(&self.networks[j])
     }
 
     // punctuate several of the networks
-    for j := 2; j < quarter; j++ {
+    for j := 1; j < quarter; j++ {
       self.networks[j].punctuate(j)
     }
 
@@ -334,7 +334,7 @@ func main() {
   organism := &Organism{}
   organism.init(network, 16)
 
-  network = organism.evolve(data, 10000, 0.0001, 1000)
+  network = organism.evolve(data, 10000000, 0.000001, 1000)
   tn, tp, fn, fp, ct := 0, 0, 0, 0, 0
 
   for i := 0; i < len(data); i++ {
@@ -359,10 +359,37 @@ func main() {
   }
 
   fmt.Printf("Test size: %d\n", len(data))
-  fmt.Printf("----------------------")
+  fmt.Printf("----------------------\n")
   fmt.Printf("TN: %d | FP: %d\n", tn, fp)
-  fmt.Printf("----------------------")
+  fmt.Printf("----------------------\n")
   fmt.Printf("FN: %d | TP: %d\n", fn, tp)
-  fmt.Printf("----------------------")
+  fmt.Printf("----------------------\n")
   fmt.Printf("Accuracy: %f\n", float64(tn+tp)/float64(ct))
 }
+
+/*
+      fmt.Printf("generation: %d loss: %f. below threshold. breaking\n", i, loss)
+      fmt.Printf("layer 0, neuron 0\n",)
+      fmt.Printf("activation: %f\n", self.networks[0].layers[0].neurons[0].activation)
+      fmt.Printf("layer 0, neuron 1\n",)
+      fmt.Printf("activation: %f\n", self.networks[0].layers[0].neurons[1].activation)
+      fmt.Printf("layer 1, neuron 0\n",)
+      fmt.Printf("activation: %f\n", self.networks[0].layers[1].neurons[0].activation)
+      fmt.Printf("layer function: %s\n", self.networks[0].layers[1].function)
+      fmt.Printf("neuron function: %s\n", self.networks[0].layers[1].neurons[0].function)
+      fmt.Printf("weight1: %f\n", self.networks[0].layers[1].neurons[0].synapses[0].weight)
+      fmt.Printf("weight2: %f\n", self.networks[0].layers[1].neurons[0].synapses[1].weight)
+      fmt.Printf("bias: %f\n", self.networks[0].layers[1].neurons[0].bias)
+      fmt.Printf("layer 1, neuron 1\n",)
+      fmt.Printf("activation: %f\n", self.networks[0].layers[1].neurons[1].activation)
+      fmt.Printf("function: %s\n", self.networks[0].layers[1].neurons[1].function)
+      fmt.Printf("weight1: %f\n", self.networks[0].layers[1].neurons[1].synapses[0].weight)
+      fmt.Printf("weight2: %f\n", self.networks[0].layers[1].neurons[1].synapses[1].weight)
+      fmt.Printf("bias: %f\n", self.networks[0].layers[1].neurons[1].bias)
+      fmt.Printf("layer 2, neuron 0\n",)
+      fmt.Printf("activation: %f\n", self.networks[0].layers[2].neurons[0].activation)
+      fmt.Printf("function: %s\n", self.networks[0].layers[2].neurons[0].function)
+      fmt.Printf("weight1: %f\n", self.networks[0].layers[2].neurons[0].synapses[0].weight)
+      fmt.Printf("weight2: %f\n", self.networks[0].layers[2].neurons[0].synapses[1].weight)
+      fmt.Printf("bias: %f\n", self.networks[0].layers[2].neurons[0].bias)
+*/
