@@ -21,7 +21,7 @@ func (self *Network) fully_connect() {
 			for j := 0; j < len(self.layers[i].neurons); j++ {
 				self.layers[i].neurons[j].function = strings.Clone(self.layers[i].function)
 				for k := 0; k < len(self.layers[i-1].neurons); k++ {
-					self.layers[i].neurons[j].synapses = append(self.layers[i].neurons[j].synapses, Synapse{0.5, k})
+					self.layers[i].neurons[j].synapses = append(self.layers[i].neurons[j].synapses, Synapse{weight: 0.5, index: k})
 				}
 			}
 		}

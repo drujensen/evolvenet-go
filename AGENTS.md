@@ -19,7 +19,6 @@ evolvenet/
 ├── layer.go                   # Layer struct and methods (neuron collections)
 ├── network.go                 # Network struct and methods (forward pass, evaluation)
 ├── organism.go                # Organism struct and methods (population evolution)
-└── evolvenet                  # Compiled binary (generated)
 ```
 
 ## Commands
@@ -31,7 +30,7 @@ evolvenet/
 - **Notes**: Run this after any code changes. No errors should occur.
 
 ### Run
-- **Command**: `./evolvenet`
+- **Command**: `go run`
 - **Purpose**: Execute the trained neural network simulation
 - **Output**: Evolutionary training progress and final accuracy on XOR gate data
 - **Expected**: Achieves 100% accuracy (TN: 2, TP: 2, Accuracy: 1.0)
@@ -57,7 +56,7 @@ evolvenet/
 When making changes:
 1. **Lint/Format**: `gofmt -w .`
 2. **Build**: `go build`
-3. **Test**: `./evolvenet` (verify output matches expected accuracy)
+3. **Run**: `go run` (verify output matches expected accuracy)
 4. **Iterate**: If issues, fix and repeat
 
 ## Key Components

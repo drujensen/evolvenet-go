@@ -18,13 +18,15 @@ func (self *Organism) init(network *Network, size int) {
 }
 
 func (self *Organism) evolve(data [][][]float64, generations int, threshold float64, log_every int) *Network {
-	return self.evolveGA(data, generations, threshold, log_every)
+	network, _, _ := self.evolveGA(data, generations, threshold, log_every)
+	return network
 }
 
-func (self *Organism) evolveGA(data [][][]float64, generations int, threshold float64, log_every int) *Network {
+func (self *Organism) evolveGA(data [][][]float64, generations int, threshold float64, log_every int) (*Network, int, float64) {
 	half := len(self.networks) / 2
 	quarter := half / 2
 
+	gen := generations
 	// for every generation
 	for i := 0; i < generations; i++ {
 
@@ -38,6 +40,7 @@ func (self *Organism) evolveGA(data [][][]float64, generations int, threshold fl
 
 		loss := self.networks[0].get_loss()
 		if threshold > 0 && loss < threshold {
+			gen = i
 			break
 		}
 
@@ -62,10 +65,10 @@ func (self *Organism) evolveGA(data [][][]float64, generations int, threshold fl
 	}
 	// sort the networks by fitness
 	sort.Slice(self.networks, func(i, j int) bool { return self.networks[i].get_loss() < self.networks[j].get_loss() })
-	return &self.networks[0]
+	return &self.networks[0], gen, self.networks[0].get_loss()
 }
 
-func (self *Organism) evolveCMA(data [][][]float64, generations int, threshold float64, log_every int, template *Network) *Network {
+func (self *Organism) evolveCMA(data [][][]float64, generations int, threshold float64, log_every int, template *Network) (*Network, int, float64) {
 	dim := len(flattenNetwork(template)) // Get dimension from template
 	lambda := len(self.networks)         // Population size
 	cma := NewCMAES(dim, lambda)
@@ -76,8 +79,10 @@ func (self *Organism) evolveCMA(data [][][]float64, generations int, threshold f
 
 	bestNetwork := template
 	bestLoss := 1.0
+	gen := 0
 
 	for i := 0; i < generations; i++ {
+		gen++
 		// Sample new population
 		population := cma.sample()
 
@@ -96,8 +101,8 @@ func (self *Organism) evolveCMA(data [][][]float64, generations int, threshold f
 			}
 		}
 
-		// Check threshold
 		if threshold > 0 && bestLoss < threshold {
+			gen = i + 1
 			break
 		}
 
@@ -130,5 +135,5 @@ func (self *Organism) evolveCMA(data [][][]float64, generations int, threshold f
 		cma.update(selected)
 	}
 
-	return bestNetwork
+	return bestNetwork, gen, bestLoss
 }
