@@ -269,6 +269,187 @@ func create_random_embedding(size int) []float64 {
 	return embedding
 }
 
+// =============================================================================
+// SYNTHETIC VISUAL FEATURES FOR FRUIT RECOGNITION
+// =============================================================================
+
+// generateFruitFeatures creates synthetic visual features for different fruits
+func generateFruitFeatures(fruitType string) map[string][]float64 {
+	features := make(map[string][]float64)
+
+	switch fruitType {
+	case "apple":
+		// Red, round, moderate texture
+		features["color"] = []float64{0.8, 0.2, 0.2, 0.1, 0.05, 0.05} // Red with variation
+		features["texture"] = []float64{0.3, 0.4}                     // Moderate edges/contrast
+		features["shape"] = []float64{0.9, 0.8, 0.8, 0.9}             // Round, compact
+
+	case "banana":
+		// Yellow, elongated, smooth
+		features["color"] = []float64{0.9, 0.9, 0.3, 0.05, 0.05, 0.1} // Yellow with variation
+		features["texture"] = []float64{0.2, 0.3}                     // Smoother texture
+		features["shape"] = []float64{2.5, 0.6, 0.7, 0.6}             // Elongated, curved
+
+	case "orange":
+		// Orange, very round, textured
+		features["color"] = []float64{0.9, 0.5, 0.1, 0.1, 0.1, 0.05} // Orange with variation
+		features["texture"] = []float64{0.4, 0.5}                    // Textured surface
+		features["shape"] = []float64{0.95, 0.9, 0.85, 0.95}         // Very round
+
+	default:
+		// Generic fruit features
+		features["color"] = []float64{0.6, 0.4, 0.2, 0.15, 0.1, 0.08}
+		features["texture"] = []float64{0.35, 0.45}
+		features["shape"] = []float64{1.0, 0.75, 0.75, 0.85}
+	}
+
+	return features
+}
+
+// =============================================================================
+// FRUIT RECOGNITION TRAINING
+// =============================================================================
+
+func demonstrateFruitRecognition() {
+	fmt.Println("=== Fruit Recognition Training Demo ===")
+
+	// Create semantic layer for fruit concepts
+	semantic_layer := NewSemanticLayer(100, 32, 3)
+
+	// Define fruit types to train
+	fruitTypes := []string{"apple", "banana", "orange"}
+
+	// Add fruit concepts to semantic layer
+	for _, fruitType := range fruitTypes {
+		// Generate visual features for this fruit
+		features := generateFruitFeatures(fruitType)
+
+		// Create combined embedding from visual features
+		combinedFeatures := append(append(features["color"], features["texture"]...), features["shape"]...)
+		embedding := create_random_embedding(32)
+
+		// Influence embedding with visual features (simplified grounding)
+		for i := 0; i < len(combinedFeatures) && i < len(embedding); i++ {
+			embedding[i] = (embedding[i] + combinedFeatures[i] - 0.5) * 0.5
+		}
+
+		fruitName := strings.ToUpper(fruitType)
+		semantic_layer.add_concept(fruitName, fruitType, embedding)
+
+		// Add sensory grounding
+		neuron := &semantic_layer.neurons[len(semantic_layer.neurons)-1]
+		neuron.add_sensory_grounding("vision", combinedFeatures)
+
+		fmt.Printf("Added %s concept with visual features: color=%.1f,%.1f,%.1f texture=%.1f shape=%.1f\n",
+			fruitName,
+			features["color"][0], features["color"][1], features["color"][2],
+			features["texture"][0],
+			features["shape"][0])
+	}
+
+	// Demonstrate concept activation and recognition
+	fmt.Println("\n--- Testing Fruit Recognition ---")
+
+	// Test with various fruit-like visual features
+	testCases := []struct {
+		name     string
+		features map[string][]float64
+	}{
+		{"Perfect Apple", generateFruitFeatures("apple")},
+		{"Perfect Banana", generateFruitFeatures("banana")},
+		{"Perfect Orange", generateFruitFeatures("orange")},
+		{"Reddish Fruit", map[string][]float64{
+			"color":   []float64{0.75, 0.25, 0.25, 0.12, 0.06, 0.06},
+			"texture": []float64{0.32, 0.42},
+			"shape":   []float64{0.88, 0.82, 0.82, 0.88},
+		}},
+		{"Yellow Fruit", map[string][]float64{
+			"color":   []float64{0.85, 0.85, 0.35, 0.06, 0.06, 0.12},
+			"texture": []float64{0.22, 0.32},
+			"shape":   []float64{2.2, 0.62, 0.72, 0.62},
+		}},
+	}
+
+	for _, testCase := range testCases {
+		combinedFeatures := append(append(testCase.features["color"], testCase.features["texture"]...), testCase.features["shape"]...)
+		testFruitRecognition(semantic_layer, combinedFeatures, testCase.name)
+	}
+
+	// Demonstrate concept evolution through training
+	fmt.Println("\n--- Concept Evolution Demo ---")
+	fmt.Println("Training concepts through repeated exposure...")
+
+	// Simulate multiple exposures to strengthen associations
+	for i := 0; i < 5; i++ {
+		for _, fruitType := range fruitTypes {
+			features := generateFruitFeatures(fruitType)
+			combinedFeatures := append(append(features["color"], features["texture"]...), features["shape"]...)
+
+			// Find the concept and strengthen its associations
+			for _, neuron := range semantic_layer.neurons {
+				if neuron.concept_id == strings.ToUpper(fruitType) {
+					// Strengthen the sensory grounding through repeated exposure
+					currentGrounding := neuron.get_sensory_grounding("vision")
+					if currentGrounding != nil {
+						// Average with new features to refine the representation
+						for k := range currentGrounding {
+							if k < len(combinedFeatures) {
+								currentGrounding[k] = (currentGrounding[k] + combinedFeatures[k]) / 2.0
+							}
+						}
+					}
+					neuron.update_frequency()
+					break
+				}
+			}
+		}
+	}
+
+	fmt.Println("Concepts strengthened through repeated training")
+
+	// Test recognition after training
+	fmt.Println("\n--- Post-Training Recognition ---")
+	perfectApple := generateFruitFeatures("apple")
+	appleFeatures := append(append(perfectApple["color"], perfectApple["texture"]...), perfectApple["shape"]...)
+	testFruitRecognition(semantic_layer, appleFeatures, "Trained Apple")
+
+	fmt.Println("=== End Fruit Recognition Demo ===")
+}
+
+func testFruitRecognition(layer *SemanticLayer, features []float64, description string) {
+	fmt.Printf("\nTesting: %s\n", description)
+
+	// Find most similar stored concept
+	maxSimilarity := -1.0
+	bestMatch := ""
+	bestLabel := ""
+
+	for _, neuron := range layer.neurons {
+		grounding := neuron.get_sensory_grounding("vision")
+		if grounding != nil && len(grounding) == len(features) {
+			similarity := cosine_similarity(features, grounding)
+			if similarity > maxSimilarity {
+				maxSimilarity = similarity
+				bestMatch = neuron.concept_id
+				bestLabel = neuron.label
+			}
+		}
+	}
+
+	if bestMatch != "" {
+		fmt.Printf("  Recognized as: %s (%s) - Similarity: %.3f\n",
+			bestLabel, bestMatch, maxSimilarity)
+
+		// Show feature breakdown
+		if len(features) >= 6 {
+			fmt.Printf("  Features: Color[R=%.2f,G=%.2f,B=%.2f] Texture[%.2f] Shape[ratio=%.1f]\n",
+				features[0], features[1], features[2], features[3], features[8])
+		}
+	} else {
+		fmt.Printf("  No good match found\n")
+	}
+}
+
 func testNetwork(network *Network, data [][][]float64, label string) {
 	correct := 0
 	for _, sample := range data {
@@ -373,6 +554,9 @@ func main() {
 
 	// Demonstrate multimodal processing
 	demonstrate_multimodal_processing()
+
+	// Demonstrate fruit recognition
+	demonstrateFruitRecognition()
 
 	// Demonstrate different input types
 	demonstrate_input_types()
