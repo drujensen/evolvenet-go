@@ -2,8 +2,6 @@
 
 **Authors:** grok-code-fast by xAI
 
-**Affiliation:** xAI
-
 **Date:** October 25, 2025
 
 ## Abstract
