@@ -11,12 +11,14 @@ type Neuron struct {
 	synapses   []Synapse
 }
 
-type WordNeuron struct {
+type ConceptNeuron struct {
 	Neuron
-	word      string    // the word/token this neuron represents
-	embedding []float64 // word embedding vector
-	frequency int       // usage frequency for importance weighting
-	context   []string  // common contextual words
+	concept_id        string               // unique identifier for this concept
+	label             string               // human-readable name (optional)
+	embedding         []float64            // distributed representation vector
+	frequency         int                  // usage frequency for importance weighting
+	context           []string             // common contextual concepts
+	sensory_grounding map[string][]float64 // links to sensory experiences by modality
 }
 
 func (self *Neuron) clone(other *Neuron) {
@@ -82,18 +84,26 @@ func (self *Neuron) activate(parent *Layer) {
 	}
 }
 
-// WordNeuron methods
-func (self *WordNeuron) clone(other *WordNeuron) {
+// ConceptNeuron methods
+func (self *ConceptNeuron) clone(other *ConceptNeuron) {
 	self.Neuron.clone(&other.Neuron)
-	self.word = other.word
+	self.concept_id = other.concept_id
+	self.label = other.label
 	self.embedding = make([]float64, len(other.embedding))
 	copy(self.embedding, other.embedding)
 	self.frequency = other.frequency
 	self.context = make([]string, len(other.context))
 	copy(self.context, other.context)
+	if other.sensory_grounding != nil {
+		self.sensory_grounding = make(map[string][]float64)
+		for modality, features := range other.sensory_grounding {
+			self.sensory_grounding[modality] = make([]float64, len(features))
+			copy(self.sensory_grounding[modality], features)
+		}
+	}
 }
 
-func (self *WordNeuron) randomize() {
+func (self *ConceptNeuron) randomize() {
 	self.Neuron.randomize()
 	// Initialize embedding with random values
 	embedding_dim := 50 // configurable embedding dimension
@@ -101,12 +111,33 @@ func (self *WordNeuron) randomize() {
 	for i := range self.embedding {
 		self.embedding[i] = randFloat(-1.0, 1.0)
 	}
+	// Initialize sensory grounding map
+	self.sensory_grounding = make(map[string][]float64)
 }
 
-func (self *WordNeuron) get_word() string {
-	return self.word
+func (self *ConceptNeuron) get_concept_id() string {
+	return self.concept_id
 }
 
-func (self *WordNeuron) update_frequency() {
+func (self *ConceptNeuron) get_label() string {
+	return self.label
+}
+
+func (self *ConceptNeuron) update_frequency() {
 	self.frequency++
+}
+
+func (self *ConceptNeuron) add_sensory_grounding(modality string, features []float64) {
+	if self.sensory_grounding == nil {
+		self.sensory_grounding = make(map[string][]float64)
+	}
+	self.sensory_grounding[modality] = make([]float64, len(features))
+	copy(self.sensory_grounding[modality], features)
+}
+
+func (self *ConceptNeuron) get_sensory_grounding(modality string) []float64 {
+	if self.sensory_grounding == nil {
+		return nil
+	}
+	return self.sensory_grounding[modality]
 }
