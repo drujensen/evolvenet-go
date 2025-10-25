@@ -1,10 +1,10 @@
 # AGENTS.md - Build Agent Documentation for evolvenet
 
 ## Project Overview
-**evolvenet** is a Go-based neural network simulator that uses evolutionary algorithms to train a network. The original XOR gate problem is solved through mutation, selection, and evolution over generations.
+**evolvenet** is a Go-based neural network simulator that uses evolutionary algorithms to train networks. The original XOR gate problem is solved through genetic algorithms, and the system now includes semantic network capabilities for modeling cognitive processes.
 
 **Language**: Go 1.18
-**Purpose**: Demonstrate neuroevolution for simple classification tasks
+**Purpose**: Demonstrate neuroevolution for classification tasks and explore biologically-inspired semantic networks
 
 ## Project Structure
 The project was refactored from a single `main.go` file into modular components:
@@ -19,6 +19,7 @@ evolvenet/
 ├── layer.go                   # Layer struct and methods (neuron collections)
 ├── network.go                 # Network struct and methods (forward pass, evaluation)
 ├── organism.go                # Organism struct and methods (population evolution)
+├── prompts/                   # Development progress and documentation
 ```
 
 ## Commands
@@ -61,17 +62,21 @@ When making changes:
 
 ## Key Components
 - **Synapse**: Connection between neurons with weight and index
+- **SemanticSynapse**: Enhanced synapse with association types and confidence scores
 - **Neuron**: Processing unit with activation function, bias, and synapses
+- **WordNeuron**: Neuron representing words/concepts with embeddings and frequency tracking
 - **Layer**: Collection of neurons (input/hidden/output)
+- **SemanticLayer**: Attention-based layer for semantic relationships
 - **Network**: Full neural network with layers and loss calculation
 - **Organism**: Population manager for evolutionary training
 - **Utils**: Random generation and floating-point rounding
 
 ## Training Parameters
+- **Algorithm**: Genetic Algorithm (GA) with momentum
 - **Data**: XOR gate truth table (4 samples)
 - **Population**: 16 networks per generation
-- **Generations**: Up to 10,000,000 (threshold 0.000001)
-- **Mutation**: 10% rate on non-top performers
+- **Generations**: Up to 100,000 (threshold 0.000001)
+- **Mutation**: Adaptive rate based on historical performance
 - **Selection**: Elitism + mutation
 - **Logging**: Every 1000 generations
 

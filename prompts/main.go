@@ -79,7 +79,7 @@ func avgInt(s []int) float64 {
 func main() {
 	const numTrials = 10
 
-	var networkGA *Network
+	var networkCMA, networkGA *Network
 
 	network := &Network{}
 	network.add_layer("input", "sigmoid", 2)
@@ -95,6 +95,31 @@ func main() {
 	}
 
 	organism := &Organism{}
+
+	// Benchmark CMA-ES
+	var cmaGens []int
+	var cmaLosses []float64
+	var cmaAccs []float64
+
+	fmt.Println("Benchmarking CMA-ES (10 trials)...")
+	for t := 0; t < numTrials; t++ {
+		organism.init(network, 16)
+		net, gen, loss := organism.evolveCMA(data, 100000, 0.000001, 1000, network)
+		cmaGens = append(cmaGens, gen)
+		cmaLosses = append(cmaLosses, loss)
+
+		correct := 0
+		for _, sample := range data {
+			actual := net.run(sample[0])
+			if (actual[0] >= 0.5 && sample[1][0] >= 0.5) || (actual[0] < 0.5 && sample[1][0] < 0.5) {
+				correct++
+			}
+		}
+		acc := float64(correct) / float64(len(data))
+		cmaAccs = append(cmaAccs, acc)
+		fmt.Printf("CMA-ES Trial %d: gen=%d, loss=%f, acc=%f\n", t+1, gen, loss, acc)
+		networkCMA = net // Save last
+	}
 
 	// Benchmark GA
 	var gaGens []int
@@ -122,12 +147,36 @@ func main() {
 	}
 
 	// Print averages
+	fmt.Printf("CMA-ES averages: generations=%.0f, loss=%.6f, accuracy=%.4f\n", avgInt(cmaGens), avg(cmaLosses), avg(cmaAccs))
 	fmt.Printf("Momentum-GA averages: generations=%.0f, loss=%.6f, accuracy=%.4f\n", avgInt(gaGens), avg(gaLosses), avg(gaAccs))
 
-	// Final GA results
+	// Individual final tests (using last run networks)
+	tn, tp, fn, fp, ct := 0, 0, 0, 0, 0
+	for i := 0; i < len(data); i++ {
+		actual := networkCMA.run(data[i][0])
+		expected := data[i][1]
+		for j := 0; j < len(expected); j++ {
+			ct++
+			if expected[j] > 0.5 {
+				if actual[j] > 0.5 {
+					tp += 1
+				} else {
+					fp += 1
+				}
+			} else {
+				if actual[j] <= 0.5 {
+					tn += 1
+				} else {
+					fn += 1
+				}
+			}
+		}
+	}
+	fmt.Printf("Test size: %d\n----------------------\nTN: %d | FP: %d\n----------------------\nFN: %d | TP: %d\n----------------------\nAccuracy: %f\n", len(data), tn, fp, fn, tp, float64(tn+tp)/float64(ct))
+
 	fmt.Println("\nFinal GA results:")
 	testNetwork(networkGA, data, "GA")
-	tn, tp, fn, fp, ct := 0, 0, 0, 0, 0
+	tn, tp, fn, fp, ct = 0, 0, 0, 0, 0
 	for i := 0; i < len(data); i++ {
 		actual := networkGA.run(data[i][0])
 		expected := data[i][1]
